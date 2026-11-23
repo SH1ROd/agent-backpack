@@ -87,9 +87,11 @@ agent-backpack/
 │   ├── private-resources.md
 │   ├── security.md
 │   └── troubleshooting.md
-└── tests/
-    ├── smoke.ps1                 # 离线 smoke test
-    └── fixtures/                 # 仅伪数据
+├── tests/
+│   ├── smoke.ps1                 # 离线 smoke test
+│   └── fixtures/                 # 仅伪数据
+└── tools/
+    └── vscode-claude-session-restore/  # 多会话自动恢复 VS Code 扩展
 ```
 
 ---
@@ -108,6 +110,19 @@ agent-backpack/
 | NAS 大型资产下载 | 未实现（仅预留描述） |
 
 未实现的模块会明确报告“未实现 / 需要授权”，不会静默成功。
+
+---
+
+## 辅助工具：多会话自动恢复
+
+[`tools/vscode-claude-session-restore/`](tools/vscode-claude-session-restore/README.md) 是一个可打包的 VS Code 扩展：
+
+- 定期和关闭前调用 `claude agents --json`，自动发现当前工作区的活动 Claude Code 会话；
+- 下次打开工作区时，为每个会话创建终端并执行 `claude --resume <sessionId>`；
+- 不需要为每个 session 手工维护命令；`/rename` 不影响恢复，`/branch` 产生的新会话会以新 ID 自动纳入快照；
+- 默认只在受信任工作区启用，自动恢复的额外参数（例如 `--dangerously-skip-permissions`）需要你在设置中显式配置。
+
+它属于本仓库的可选工具，不影响 `doctor.ps1` / bootstrap 的安全边界。
 
 ---
 

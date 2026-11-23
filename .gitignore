@@ -27,6 +27,9 @@ build/
 .tmp/
 *.tmp
 
+# Built VS Code extension packages (source lives in tools/)
+*.vsix
+
 # OS/editor
 .DS_Store
 Thumbs.db

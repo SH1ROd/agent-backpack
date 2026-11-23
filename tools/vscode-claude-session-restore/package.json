@@ -1,0 +1,108 @@
+{
+  "name": "claude-session-restore",
+  "displayName": "Claude Session Restore",
+  "description": "Snapshot active Claude Code sessions for a workspace and restore them in separate terminals when the workspace reopens.",
+  "version": "0.1.0",
+  "publisher": "SH1ROd",
+  "engines": {
+    "vscode": "^1.94.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "claude",
+    "claude-code",
+    "session",
+    "terminal"
+  ],
+  "activationEvents": [
+    "onStartupFinished",
+    "onCommand:claudeSessionRestore.snapshotNow",
+    "onCommand:claudeSessionRestore.restoreNow",
+    "onCommand:claudeSessionRestore.clearSnapshot"
+  ],
+  "main": "./extension.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/SH1ROd/agent-backpack.git",
+    "directory": "tools/vscode-claude-session-restore"
+  },
+  "license": "UNLICENSED",
+  "contributes": {
+    "commands": [
+      {
+        "command": "claudeSessionRestore.snapshotNow",
+        "title": "Claude Sessions: Snapshot Active Sessions Now"
+      },
+      {
+        "command": "claudeSessionRestore.restoreNow",
+        "title": "Claude Sessions: Restore Snapshot Now"
+      },
+      {
+        "command": "claudeSessionRestore.clearSnapshot",
+        "title": "Claude Sessions: Clear This Workspace Snapshot"
+      }
+    ],
+    "configuration": {
+      "title": "Claude Session Restore",
+      "properties": {
+        "claudeSessionRestore.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable automatic session snapshots and restore."
+        },
+        "claudeSessionRestore.autoRestore": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically open terminals and resume snapshotted sessions when the workspace opens."
+        },
+        "claudeSessionRestore.allowUntrustedWorkspaces": {
+          "type": "boolean",
+          "default": false,
+          "description": "Allow automatic restore in untrusted workspaces. Not recommended."
+        },
+        "claudeSessionRestore.snapshotIntervalSeconds": {
+          "type": "number",
+          "default": 30,
+          "minimum": 0,
+          "maximum": 600,
+          "description": "How often to snapshot active sessions while the window is open. Set to 0 to disable the timer (deactivate snapshot still runs)."
+        },
+        "claudeSessionRestore.maxSessions": {
+          "type": "number",
+          "default": 8,
+          "minimum": 1,
+          "maximum": 32,
+          "description": "Maximum number of sessions to snapshot/restore per workspace."
+        },
+        "claudeSessionRestore.revealTerminals": {
+          "type": "boolean",
+          "default": true,
+          "description": "Reveal the first restored terminal. Other terminals are created in the background."
+        },
+        "claudeSessionRestore.claudeCommand": {
+          "type": "string",
+          "default": "claude",
+          "description": "Command used in restored terminals. Use 'claude' when it is on PATH, or an absolute path to claude.exe."
+        },
+        "claudeSessionRestore.extraArgs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Extra arguments appended to the resume command, e.g. [\"--dangerously-skip-permissions\"]. These are trusted local settings."
+        },
+        "claudeSessionRestore.clearSnapshotWhenNoSessions": {
+          "type": "boolean",
+          "default": true,
+          "description": "When a successful query finds no active sessions, clear the saved snapshot instead of keeping it."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "test": "node test/core.test.js && node test/extension.test.js"
+  }
+}
