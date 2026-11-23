@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "note": "FAKE DATA ONLY - offline test fixture. No real repository or secret.",
+  "capabilities": [
+    {
+      "id": "example-fixture-tool",
+      "kind": "cli",
+      "description": "离线测试用伪数据：中文 / 空格 / JSON 路径",
+      "source": {
+        "provider": "gitea",
+        "repository": "example-owner/example-tool",
+        "ref": "main"
+      },
+      "os": ["windows"],
+      "agents": ["generic"],
+      "install": {
+        "instructions": "docs/install.md",
+        "verification": "example-tool --version"
+      },
+      "secrets": {
+        "required": false,
+        "handling": "none"
+      },
+      "security": {
+        "level": "low",
+        "requires_approval": true
+      }
+    }
+  ]
+}

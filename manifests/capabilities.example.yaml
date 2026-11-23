@@ -1,0 +1,84 @@
+# Agent Backpack — example capability definitions (FAKE DATA ONLY)
+#
+# Every repository, path and identifier below is a placeholder.
+# Real capability inventories belong in a PRIVATE repository
+# (for example the optional `agent-backpack-private`), never here.
+
+schema_version: 1
+
+capabilities:
+  - id: example-cli-tool
+    kind: cli
+    description: "示例：一个安装在用户目录下的命令行工具（伪数据）"
+    source:
+      provider: gitea
+      repository: example-owner/example-cli
+      ref: main
+    os: [windows]
+    agents: [codex, claude-code, generic]
+    install:
+      instructions: docs/install.md
+      verification: "example-cli --version"
+    secrets:
+      required: false
+      handling: none
+    security:
+      level: low
+      requires_approval: true
+
+  - id: example-mcp-server
+    kind: mcp
+    description: "示例：通过本地配置接入的 MCP 服务（伪数据）"
+    source:
+      provider: gitea
+      repository: example-owner/example-mcp
+      ref: main
+    os: [windows]
+    agents: [claude-code, codex]
+    install:
+      instructions: docs/setup.md
+      verification: "read-only smoke request"
+    secrets:
+      required: true
+      handling: user_approval_required
+      notes: "Secrets are provided by the owner in a trusted interactive session."
+    security:
+      level: medium
+      requires_approval: true
+
+  - id: example-skill
+    kind: skill
+    description: "示例：一个只读的资料抓取技能（伪数据）"
+    source:
+      provider: gitea
+      repository: example-owner/example-skill
+      ref: main
+    os: [windows]
+    agents: [generic]
+    install:
+      instructions: docs/install.md
+      verification: "skill self-check"
+    secrets:
+      required: false
+      handling: none
+    security:
+      level: low
+      requires_approval: true
+
+  - id: example-asset-bundle
+    kind: asset
+    description: "示例：预留的 NAS 构件条目（未实现，伪数据）"
+    source:
+      provider: nas
+      location: "not-configured"
+    os: [windows]
+    agents: [generic]
+    install:
+      instructions: docs/not-implemented.md
+      verification: "sha256"
+    secrets:
+      required: true
+      handling: user_approval_required
+    security:
+      level: high
+      requires_approval: true

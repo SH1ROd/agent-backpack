@@ -1,0 +1,39 @@
+# Local / private state
+.env
+.env.*
+!.env.example
+*.pem
+*.p12
+*.pfx
+*.key
+id_rsa
+id_ed25519
+**/.secrets/
+**/secrets.local.*
+.local/
+.private/
+private-workspace/
+private-clones/
+.cache/
+logs/
+*.log
+
+# Temporary files
+__pycache__/
+*.pyc
+node_modules/
+dist/
+build/
+.tmp/
+*.tmp
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/*.log
+.idea/
+.vs/
+.claude/settings.local.json
+
+# Local agent state (never commit)
+.agent-backpack.local/

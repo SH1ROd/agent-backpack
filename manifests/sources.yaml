@@ -1,0 +1,47 @@
+# Agent Backpack — public source discovery metadata
+# NOTE: This file contains only public, non-secret access metadata.
+# It must never contain credentials, tokens, cookies, private repository lists,
+# or private file paths.
+
+schema_version: 1
+project: agent-backpack
+
+sources:
+  public:
+    provider: github
+    repository: SH1ROd/agent-backpack
+    url: https://github.com/SH1ROd/agent-backpack
+
+  private:
+    provider: gitea
+    # Public access endpoint. Knowing this URL does not grant access:
+    # every private repository is protected by the Gitea server itself.
+    base_url: https://git.lqwfun.space:18443
+    # Optional convenience hint; remove this line if you prefer to keep
+    # the account name out of the public repository.
+    account_hint: "863444090"
+    auth_required: true
+    auth_methods:
+      - https_credential_helper
+      - ssh_when_configured
+    default_mode: metadata_first
+    clone_all_by_default: false
+    private_index:
+      # Planned private manifest repository. It may NOT exist yet.
+      # Absence of this repository must not be treated as an auth failure.
+      repository: agent-backpack-private
+      optional: true
+      status: not_yet_verified
+
+  assets:
+    # Large binary artifacts (installers, models, archives) live on a NAS.
+    # Transport protocol / auth / download API are NOT confirmed yet.
+    provider: nas
+    status: not_implemented
+    auth_required: true
+    notes: "V1 reserves the schema only. Do not assume anonymous download."
+
+# Scope rules:
+# - V1 verifies access with a user-specified, single repository URL.
+# - API-based enumeration is optional and requires a separately scoped token.
+# - No private repository names are listed here.
