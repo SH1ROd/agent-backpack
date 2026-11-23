@@ -1,4 +1,5 @@
 test/**
+scripts/**
 .vscode/**
 *.vsix
 node_modules/**

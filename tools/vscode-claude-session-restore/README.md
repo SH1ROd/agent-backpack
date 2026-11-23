@@ -80,11 +80,60 @@ node test/extension.test.js
 | `claudeSessionRestore.autoRestore` | `true` | 打开工作区时自动恢复 |
 | `claudeSessionRestore.allowUntrustedWorkspaces` | `false` | 是否允许在未信任工作区自动恢复 |
 | `claudeSessionRestore.snapshotIntervalSeconds` | `30` | 快照周期；0 关闭定时器 |
+| `claudeSessionRestore.restoreDelayMs` | `0` | 激活后延迟多久开始恢复；0 为立即开始 |
+| `claudeSessionRestore.staggerMs` | `0` | 每个终端之间的间隔；0 为并行创建 |
+| `claudeSessionRestore.launchMode` | `shell` | `shell` 走 PowerShell + `claude` 命令；`direct` 直接以原生 `claude.exe` 作为终端进程，跳过 shell 启动 |
+| `claudeSessionRestore.diagnostics` | `true` | 把阶段耗时写入扩展工作区存储的 `restore-diagnostics.jsonl` |
 | `claudeSessionRestore.maxSessions` | `8` | 每个工作区最多快照/恢复多少个会话 |
 | `claudeSessionRestore.revealTerminals` | `true` | 是否显示第一个恢复的终端 |
 | `claudeSessionRestore.claudeCommand` | `claude` | 终端里执行的命令；可填绝对路径 |
 | `claudeSessionRestore.extraArgs` | `[]` | 追加到 resume 命令的参数，例如 `["--dangerously-skip-permissions"]` |
 | `claudeSessionRestore.clearSnapshotWhenNoSessions` | `true` | 查询成功但没有活动会话时清空快照 |
+
+## 性能诊断
+
+扩展会把阶段耗时写入：
+
+```text
+<VS Code 工作区存储>\SH1ROd.claude-session-restore\restore-diagnostics.jsonl
+```
+
+包含：
+
+- `activate.ready`：激活耗时、恢复延迟配置
+- `restore.start` / `restore.activeQuery`：活动会话查询耗时
+- `restore.terminal`：每个终端创建/发送命令的时刻与累计耗时
+- `restore.done`：恢复总耗时
+- `snapshot.folder` / `snapshot.done`：快照查询耗时
+
+另有一个独立探测脚本，建议在 **Windows Terminal**（不要放在将被关闭的 VS Code 终端）里运行：
+
+```powershell
+node "E:\Desktop\agent-backpack\tools\vscode-claude-session-restore\scripts\measure-restore.js" "C:\Users\SH1RO\restore-measure.jsonl" 2000
+```
+
+它每 2 秒轮询 `claude agents --json`，记录每个 session 在重新打开 VS Code 后第一次出现的时间。然后关闭 VS Code、重新打开，等 session 就绪后按 `Ctrl+C`。把两份日志对照，就能区分：
+
+- 扩展自身耗时（激活延迟、活动查询、终端创建）
+- Claude Code 自身启动/恢复耗时（`session.seen` 与 `restore.terminal` 的差值）
+
+可做 A/B：
+
+```jsonc
+// 当前默认：shell + 立即恢复 + 并行
+"claudeSessionRestore.launchMode": "shell",
+"claudeSessionRestore.restoreDelayMs": 0,
+"claudeSessionRestore.staggerMs": 0
+
+// 对照实验：保留旧基线的固定延迟
+"claudeSessionRestore.restoreDelayMs": 1500,
+"claudeSessionRestore.staggerMs": 350
+
+// 对照实验：原生 exe 直接作为终端进程
+"claudeSessionRestore.launchMode": "direct"
+```
+
+注意：独立探测脚本每 2 秒会启动一次 `claude.exe` 查询，本身会增加少量负载；它只用于诊断，不要长期运行。
 
 ## 安全注意事项
 

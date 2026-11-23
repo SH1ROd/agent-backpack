@@ -17,6 +17,7 @@ let restoreRunning = false;
 let snapshotRunning = false;
 let lastSyncSnapshotAt = 0;
 let lastRestoreAt = 0;
+const EXTENSION_VERSION = '0.1.0';
 
 function log(message) {
   try {
@@ -44,6 +45,35 @@ function folderKey(folder) {
 function snapshotUri(context) {
   const base = context.storageUri || context.globalStorageUri;
   return vscode.Uri.joinPath(base, STATE_FILE);
+}
+
+function diagnosticsFile(context) {
+  const base = context.storageUri || context.globalStorageUri;
+  return vscode.Uri.joinPath(base, 'restore-diagnostics.jsonl').fsPath;
+}
+
+function recordDiagnostic(context, event, data) {
+  const payload = Object.assign(
+    {
+      ts: new Date().toISOString(),
+      event,
+      version: EXTENSION_VERSION,
+      vscode: vscode.version,
+      windowSessionId: vscode.env.sessionId
+    },
+    data || {}
+  );
+  log('[diag] ' + event + ' ' + JSON.stringify(data || {}));
+  try {
+    if (getConfig().get('diagnostics') === false) {
+      return;
+    }
+    const file = diagnosticsFile(context);
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.appendFileSync(file, JSON.stringify(payload) + '\n', 'utf8');
+  } catch (error) {
+    log('Could not write diagnostics: ' + error.message);
+  }
 }
 
 function emptySnapshots() {
@@ -100,14 +130,37 @@ function saveSnapshots(context, data) {
   }
 }
 
-function updateSnapshotForFolder(context, folder, sessions, clearWhenEmpty) {
-  if ((!sessions || sessions.length === 0) && !clearWhenEmpty) {
-    return loadSnapshots(context);
+function mergeSessionLists(existingSessions, activeSessions) {
+  const merged = new Map();
+  for (const session of existingSessions || []) {
+    if (session && session.sessionId) {
+      merged.set(session.sessionId, session);
+    }
   }
+  for (const session of activeSessions || []) {
+    if (session && session.sessionId) {
+      merged.set(session.sessionId, session);
+    }
+  }
+  return Array.from(merged.values());
+}
+
+function updateSnapshotForFolder(context, folder, sessions, clearWhenEmpty, merge) {
   const data = loadSnapshots(context);
-  data.folders[folderKey(folder)] = {
+  const key = folderKey(folder);
+  let nextSessions = sessions || [];
+  if (merge) {
+    const existing =
+      (data.folders[key] && Array.isArray(data.folders[key].sessions)
+        ? data.folders[key].sessions
+        : []);
+    nextSessions = mergeSessionLists(existing, nextSessions);
+  } else if (nextSessions.length === 0 && !clearWhenEmpty) {
+    return data;
+  }
+  data.folders[key] = {
     savedAt: new Date().toISOString(),
-    sessions: core.buildSnapshot(sessions, getConfig().get('maxSessions'))
+    sessions: core.buildSnapshot(nextSessions, getConfig().get('maxSessions'))
   };
   saveSnapshots(context, data);
   return data;
@@ -153,38 +206,62 @@ async function snapshotAll(context, notify) {
     return false;
   }
   snapshotRunning = true;
+  const startedAt = Date.now();
   try {
     const config = getConfig();
     if (!config.get('enabled')) {
       return false;
     }
+    recordDiagnostic(context, 'snapshot.start', { trigger: notify ? 'manual' : 'timer' });
     const folders = vscode.workspace.workspaceFolders || [];
     for (const folder of folders) {
+      const queryStartedAt = Date.now();
       const result = await querySessionsAsync(folder, config.get('claudeCommand'));
+      const queryMs = Date.now() - queryStartedAt;
       if (!result.ok) {
         log('Snapshot skipped for ' + folder.name + ': ' + result.error);
+        recordDiagnostic(context, 'snapshot.folder', {
+          folder: folder.name,
+          queryMs,
+          ok: false,
+          error: result.error
+        });
         continue;
       }
       const sessions = core.sessionsForFolder(result.sessions, folder.uri.fsPath);
-      if (sessions.length === 0 && (Date.now() - lastRestoreAt) < 60000) {
-        // Restored terminals need time to register with `claude agents`. Do not
-        // overwrite a good snapshot with an empty one during that window.
-        log('Skipping empty snapshot for ' + folder.name + ' during restore grace period.');
-        continue;
-      }
+      const inGracePeriod = Date.now() - lastRestoreAt < 60000;
       updateSnapshotForFolder(
         context,
         folder,
         sessions,
-        config.get('clearSnapshotWhenNoSessions')
+        config.get('clearSnapshotWhenNoSessions'),
+        inGracePeriod
       );
-      log('Snapshotted ' + sessions.length + ' session(s) for ' + folder.name + '.');
+      log(
+        (inGracePeriod ? 'Merged snapshot' : 'Snapshotted') +
+          ' with ' +
+          sessions.length +
+          ' active session(s) for ' +
+          folder.name +
+          (inGracePeriod ? ' (restore grace).' : '.')
+      );
+      recordDiagnostic(context, 'snapshot.folder', {
+        folder: folder.name,
+        queryMs,
+        ok: true,
+        sessions: sessions.length,
+        merged: inGracePeriod
+      });
     }
     if (notify) {
       vscode.window.showInformationMessage('Claude session snapshot updated.');
     }
     return true;
   } finally {
+    recordDiagnostic(context, 'snapshot.done', {
+      durationMs: Date.now() - startedAt,
+      manual: Boolean(notify)
+    });
     snapshotRunning = false;
   }
 }
@@ -201,16 +278,29 @@ function snapshotAllSync(context) {
   }
   const folders = vscode.workspace.workspaceFolders || [];
   for (const folder of folders) {
+    const startedAt = Date.now();
     try {
       const sessions = core.querySessionsSync(folder.uri.fsPath, config.get('claudeCommand'), 3000);
       const filtered = core.sessionsForFolder(sessions, folder.uri.fsPath);
       // Do not clear on shutdown: the terminal processes may already be gone by
       // the time deactivate runs. The periodic snapshot is responsible for
       // clearing when the user really has no active sessions.
-      updateSnapshotForFolder(context, folder, filtered, false);
+      const inGracePeriod = Date.now() - lastRestoreAt < 60000;
+      updateSnapshotForFolder(context, folder, filtered, false, inGracePeriod);
       log('Deactivate snapshot: ' + filtered.length + ' session(s) for ' + folder.name + '.');
+      recordDiagnostic(context, 'snapshot.sync', {
+        folder: folder.name,
+        durationMs: Date.now() - startedAt,
+        sessions: filtered.length,
+        merged: inGracePeriod
+      });
     } catch (error) {
       log('Deactivate snapshot failed for ' + folder.name + ': ' + error.message);
+      recordDiagnostic(context, 'snapshot.sync', {
+        folder: folder.name,
+        durationMs: Date.now() - startedAt,
+        error: error.message
+      });
     }
   }
 }
@@ -250,7 +340,20 @@ async function restoreNow(context, manual) {
       return;
     }
 
+    const restoreStartedAt = Date.now();
+    const launchMode = config.get('launchMode') || 'shell';
+    const staggerMs = Math.max(0, Number(config.get('staggerMs')) || 0);
+    recordDiagnostic(context, 'restore.start', {
+      manual,
+      launchMode,
+      staggerMs,
+      maxSessions: config.get('maxSessions'),
+      snapshotSessions: entry.sessions.length
+    });
+
+    const activeStartedAt = Date.now();
     const activeResult = await querySessionsAsync(folder, config.get('claudeCommand'));
+    const activeMs = Date.now() - activeStartedAt;
     const activeIds = new Set();
     if (activeResult.ok) {
       for (const session of core.sessionsForFolder(activeResult.sessions, folder.uri.fsPath)) {
@@ -259,17 +362,38 @@ async function restoreNow(context, manual) {
     } else {
       log('Could not query active sessions; restoring the snapshot anyway: ' + activeResult.error);
     }
+    recordDiagnostic(context, 'restore.activeQuery', {
+      durationMs: activeMs,
+      ok: activeResult.ok,
+      activeCount: activeIds.size,
+      error: activeResult.error || null
+    });
 
     const maxSessions = config.get('maxSessions');
-    const extraArgs = config.get('extraArgs') || [];
+    const extraArgs = (config.get('extraArgs') || []).map(String);
     const claudeCommand = config.get('claudeCommand') || 'claude';
     const reveal = config.get('revealTerminals');
+    let directExecutable = null;
+    if (launchMode === 'direct') {
+      const candidate = core.findClaudeExecutable(claudeCommand);
+      if (path.isAbsolute(candidate) && /\.exe$/i.test(candidate)) {
+        directExecutable = candidate;
+      } else {
+        log('launchMode=direct requested but no native claude.exe was resolved; using shell mode.');
+      }
+    }
+    recordDiagnostic(context, 'restore.launchMode', {
+      requested: launchMode,
+      effective: directExecutable ? 'direct' : 'shell',
+      executable: directExecutable ? path.basename(directExecutable) : null
+    });
     let created = 0;
 
     for (const session of entry.sessions.slice(0, maxSessions)) {
       if (!core.isUuid(session.sessionId)) {
         continue;
       }
+      const terminalStartedAt = Date.now();
       const terminalName = core.terminalName(session);
       const existingTerminals = vscode.window.terminals.filter(
         terminal => terminal.name === terminalName
@@ -293,8 +417,16 @@ async function restoreNow(context, manual) {
               core.shortId(session.sessionId) +
               '.'
           );
+          recordDiagnostic(context, 'restore.dedup', {
+            id: core.shortId(session.sessionId),
+            disposed: existingTerminals.length - 1,
+            active: true
+          });
         }
         log('Skipped active session ' + core.shortId(session.sessionId) + '.');
+        recordDiagnostic(context, 'restore.skipActive', {
+          id: core.shortId(session.sessionId)
+        });
         continue;
       }
 
@@ -313,36 +445,69 @@ async function restoreNow(context, manual) {
             core.shortId(session.sessionId) +
             '.'
         );
+        recordDiagnostic(context, 'restore.disposeStale', {
+          id: core.shortId(session.sessionId),
+          disposed: existingTerminals.length
+        });
       }
 
-      let command;
-      try {
-        command = core.buildResumeCommand(claudeCommand, session.sessionId, extraArgs);
-      } catch (error) {
-        log('Invalid snapshot entry skipped: ' + error.message);
-        continue;
+      let command = null;
+      if (!directExecutable) {
+        try {
+          command = core.buildResumeCommand(claudeCommand, session.sessionId, extraArgs);
+        } catch (error) {
+          log('Invalid snapshot entry skipped: ' + error.message);
+          continue;
+        }
       }
-      const terminal = vscode.window.createTerminal({
-        name: terminalName,
-        cwd: folder.uri
-      });
-      terminal.sendText(command, true);
+
+      let terminal;
+      if (directExecutable) {
+        terminal = vscode.window.createTerminal({
+          name: terminalName,
+          cwd: folder.uri,
+          shellPath: directExecutable,
+          shellArgs: ['--resume', session.sessionId].concat(extraArgs)
+        });
+      } else {
+        terminal = vscode.window.createTerminal({
+          name: terminalName,
+          cwd: folder.uri
+        });
+        terminal.sendText(command, true);
+      }
       if (created === 0 && reveal) {
         terminal.show(true);
       }
       created += 1;
-      await delay(350);
+      recordDiagnostic(context, 'restore.terminal', {
+        id: core.shortId(session.sessionId),
+        name: terminalName,
+        mode: directExecutable ? 'direct' : 'shell',
+        operationMs: Date.now() - terminalStartedAt,
+        elapsedMs: Date.now() - restoreStartedAt,
+        index: created
+      });
+      if (staggerMs > 0) {
+        await delay(staggerMs);
+      }
     }
 
     if (created > 0) {
       lastRestoreAt = Date.now();
     }
     log('Restore created ' + created + ' terminal(s) for ' + folder.name + '.');
+    recordDiagnostic(context, 'restore.done', {
+      created,
+      durationMs: Date.now() - restoreStartedAt,
+      mode: directExecutable ? 'direct' : 'shell'
+    });
     if (manual) {
       vscode.window.showInformationMessage(
         'Claude session restore: created ' + created + ' terminal(s).'
       );
     }
+    return created;
   } finally {
     restoreRunning = false;
   }
@@ -363,9 +528,11 @@ function startSnapshotTimer(context) {
 }
 
 function activate(context) {
+  const activateStartedAt = Date.now();
   extensionContext = context;
   output = vscode.window.createOutputChannel('Claude Session Restore');
   context.subscriptions.push(output);
+  recordDiagnostic(context, 'activate.start', {});
 
   context.subscriptions.push(
     vscode.commands.registerCommand('claudeSessionRestore.snapshotNow', async () => {
@@ -409,7 +576,15 @@ function activate(context) {
 
   const config = getConfig();
   const folder = firstWorkspaceFolder();
+  const restoreDelayMs = Math.max(0, Number(config.get('restoreDelayMs')) || 0);
   log('Activated (v0.1.0); workspace=' + (folder ? folder.name : 'none') + '.');
+  recordDiagnostic(context, 'activate.ready', {
+    workspace: folder ? folder.name : null,
+    activationMs: Date.now() - activateStartedAt,
+    restoreDelayMs,
+    launchMode: config.get('launchMode') || 'shell',
+    staggerMs: Number(config.get('staggerMs')) || 0
+  });
   if (!config.get('enabled')) {
     log('Extension is disabled.');
     return;
@@ -419,9 +594,16 @@ function activate(context) {
   setTimeout(() => {
     restoreNow(context, false)
       .catch(error => log('Automatic restore failed: ' + error.message))
-      .then(() => snapshotAll(context, false))
+      .then(created => {
+        if (created > 0) {
+          // Restored Claude processes are still starting. The periodic snapshot
+          // will merge them once they register; avoid competing with startup.
+          return undefined;
+        }
+        return snapshotAll(context, false);
+      })
       .catch(error => log('Initial snapshot failed: ' + error.message));
-  }, 1500);
+  }, restoreDelayMs);
 }
 
 function deactivate() {

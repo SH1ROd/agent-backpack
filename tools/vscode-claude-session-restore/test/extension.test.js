@@ -23,10 +23,18 @@ const config = {
   revealTerminals: true,
   claudeCommand: 'claude',
   extraArgs: ['--dangerously-skip-permissions'],
-  clearSnapshotWhenNoSessions: true
+  clearSnapshotWhenNoSessions: true,
+  diagnostics: true,
+  launchMode: 'shell',
+  restoreDelayMs: 0,
+  staggerMs: 0
 };
 
 const fakeVscode = {
+  version: '1.100.0',
+  env: {
+    sessionId: 'test-window-session'
+  },
   Uri: {
     joinPath(base, ...parts) {
       return { fsPath: path.join(base.fsPath, ...parts), scheme: 'file' };

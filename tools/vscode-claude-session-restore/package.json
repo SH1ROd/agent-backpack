@@ -69,6 +69,34 @@
           "maximum": 600,
           "description": "How often to snapshot active sessions while the window is open. Set to 0 to disable the timer (deactivate snapshot still runs)."
         },
+        "claudeSessionRestore.restoreDelayMs": {
+          "type": "number",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 10000,
+          "description": "Delay after extension activation before restoring terminals. 0 starts sessions immediately."
+        },
+        "claudeSessionRestore.staggerMs": {
+          "type": "number",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 5000,
+          "description": "Delay between creating restored terminals. 0 creates them in parallel."
+        },
+        "claudeSessionRestore.launchMode": {
+          "type": "string",
+          "enum": [
+            "shell",
+            "direct"
+          ],
+          "default": "shell",
+          "description": "shell: create a terminal and send the claude command. direct: launch the native claude.exe as the terminal process, skipping PowerShell/cmd startup. Use direct for experiments."
+        },
+        "claudeSessionRestore.diagnostics": {
+          "type": "boolean",
+          "default": true,
+          "description": "Write phase timings to restore-diagnostics.jsonl in the extension workspace storage."
+        },
         "claudeSessionRestore.maxSessions": {
           "type": "number",
           "default": 8,
