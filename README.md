@@ -83,6 +83,7 @@ agent-backpack/
 │   └── generic/README.md         # DSh 等未知 Agent 遵循通用入口
 ├── docs/
 │   ├── getting-started-windows.md
+│   ├── powershell-7.md
 │   ├── gitea-auth.md
 │   ├── private-resources.md
 │   ├── security.md
@@ -142,6 +143,7 @@ agent-backpack/
 
 - 首选 Windows 10/11，最低 Windows PowerShell 5.1。
 - PowerShell 7 推荐但不是前置条件；检测到 `pwsh` 仅作报告，不自动安装。
+- PowerShell 7 的安装方式、以及 Claude Code / Codex 实际使用哪个 shell，见 [docs/powershell-7.md](docs/powershell-7.md)。
 - 脚本不修改系统全局设置、注册表、环境变量、防火墙或执行策略。
 
 ---

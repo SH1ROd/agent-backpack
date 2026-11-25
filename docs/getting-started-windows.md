@@ -103,6 +103,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\bootstrap\doctor.ps1
 - 本仓库脚本以 PS 5.1 为最低要求，不依赖 PS7-only 语法。
 - 看到“手动终端里 `pwsh` 不存在”不代表系统没有 PS7，也不代表 Agent 没用 PS7。
 - 如确需安装 PS7，仅从 Microsoft 官方渠道获取，并注意 MSI 与 MSIX/WindowsApps 的差异。不要由 Agent 自动安装。
+- 不同安装方式与 Agent（Claude Code / Codex）的 shell 选择见 [PowerShell 7 与 Agent Shell](powershell-7.md)。
 
 ## 8. 新电脑检查清单
 

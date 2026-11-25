@@ -17,6 +17,7 @@
 - 只说明当前进程的 PATH 中没有 PowerShell 7。
 - 不代表系统没装，也不代表 Agent 用的是 5.1。
 - 本仓库脚本不需要 `pwsh`；不要为此自动安装。
+- 如果 Claude Code 的 PowerShell 工具仍显示 5.1，这不是 PATH 问题：Claude Code 只检查固定路径，详见 [PowerShell 7 与 Agent Shell](powershell-7.md)。
 
 ### 语法错误：`&&` / 三元运算符 / `??`
 

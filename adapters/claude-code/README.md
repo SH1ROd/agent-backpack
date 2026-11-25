@@ -16,3 +16,7 @@ without my explicit approval. Never ask me to paste secrets into chat.
 - 不修改用户的全局 Claude 配置来达成项目兼容；项目级文件优先。
 - 涉及认证时，引导用户在可信终端完成；Claude Code 不应接收或转述任何秘密。
 - 克隆私有仓库前确认目标位于公开工作树之外。
+
+## PowerShell 7
+
+Claude Code 的 PowerShell 工具只检查固定的绝对路径，不查 PATH；仅安装 winget/MSIX 版时可能仍回落到 5.1。安装位置和 Agent shell 的差异见 [PowerShell 7 与 Agent Shell](../../docs/powershell-7.md)。
