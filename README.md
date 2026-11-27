@@ -87,7 +87,8 @@ agent-backpack/
 │   ├── gitea-auth.md
 │   ├── private-resources.md
 │   ├── security.md
-│   └── troubleshooting.md
+│   ├── troubleshooting.md
+│   └── windows-notes/            # Windows 小问题经验记录
 ├── tests/
 │   ├── smoke.ps1                 # 离线 smoke test
 │   └── fixtures/                 # 仅伪数据
@@ -124,6 +125,15 @@ agent-backpack/
 - 默认只在受信任工作区启用，自动恢复的额外参数（例如 `--dangerously-skip-permissions`）需要你在设置中显式配置。
 
 它属于本仓库的可选工具，不影响 `doctor.ps1` / bootstrap 的安全边界。
+
+---
+
+## Windows 经验笔记
+
+按“现象 → 证据 → 前因后果 → 处理 → 回退 → 经验”的格式记录容易被 Windows 更新重置的小问题，便于以后快速判断和复用处理步骤。
+
+- [2026-11-28 Windows 11 25H2 更新后右键菜单恢复为新样式](docs/windows-notes/2026-11-28-windows11-context-menu.md)
+- [笔记索引与写作规范](docs/windows-notes/README.md)
 
 ---
 

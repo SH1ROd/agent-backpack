@@ -123,3 +123,7 @@ git diff --cached
 | `src refspec main does not match any` | 确认已有提交，再重命名/切换分支。 |
 | `rejected (fetch first)` | 远端不是空仓库；先检查，**不要 force push**。 |
 | `Authentication failed` | 使用 Git/GCM 的交互认证，不在 URL 写密码。 |
+
+## Windows 11 更新后右键菜单变化
+
+如果经典右键菜单在 Windows 更新后恢复成新样式，见 [Windows 经验笔记](windows-notes/2026-11-28-windows11-context-menu.md)。
