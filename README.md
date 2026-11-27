@@ -88,6 +88,7 @@ agent-backpack/
 │   ├── private-resources.md
 │   ├── security.md
 │   ├── troubleshooting.md
+│   ├── tools/                    # Windows 常用工具新机适配指南
 │   └── windows-notes/            # Windows 小问题经验记录
 ├── tests/
 │   ├── smoke.ps1                 # 离线 smoke test
@@ -125,6 +126,14 @@ agent-backpack/
 - 默认只在受信任工作区启用，自动恢复的额外参数（例如 `--dangerously-skip-permissions`）需要你在设置中显式配置。
 
 它属于本仓库的可选工具，不影响 `doctor.ps1` / bootstrap 的安全边界。
+
+---
+
+## Windows 工具适配指南
+
+记录个人日常 Windows 工具的新机快速安装、校验、共存配置与验收清单：
+
+- [Oink 双 Windows 协同适配指南](docs/tools/oink.md)
 
 ---
 
